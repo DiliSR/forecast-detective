@@ -26,17 +26,15 @@ computed, and every number and citation is checked afterwards.
 
 ## Design rule: code decides, the LLM explains
 
-```
-question ─► chat agent (tool-calling router, max 8 steps)
-              ├─ get_forecasts / explain_hour ─► explanation cache ─► evidence pack ─┐
-              └─ recommend_model ─► planner statistics ─► evidence blocks ───────────┤
-                                                                                      ├─► RAG (Chroma, top-k)
-                                                                                      ├─► ONE writer LLM call
-                                                                                      └─► checker (+ one retry)
-```
+![System diagram: a question goes to the chat agent, which runs the explain_hour pipeline (explainers, evidence pack, retrieval, writer, checker) or the planner](docs/architecture-main.png)
+
 
 The explainers, retrieval, checker and planner statistics are plain code with tests. The model only writes the wording, so it
 cannot change which model wins or add a number the code did not produce.
+
+More detail, each with its own diagram: how [retrieval (RAG)](docs/architecture-rag.png) builds its queries and
+cut-off, and how the [planner](docs/architecture-planner.png) reaches a verdict. The full write-up is
+[on the project page](https://DiliSR.github.io/forecast-detective/).
 
 ## Findings on the test period (July to December 2014, 184 days)
 

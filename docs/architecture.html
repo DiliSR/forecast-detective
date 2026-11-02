@@ -1,0 +1,565 @@
+<title>Forecast Detective Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+  /* Layout concept: one wide figure carries the page; a short facts strip above it, three design rules and a status list below. */
+  :root {
+    --bg: #f5f6f8; --surface: #ffffff; --fg: #1c2127; --muted: #5d6671; --line: #cfd5dc;
+    --group: #eceff3; --llm: #2a78d6; --llm-bg: #e4eefb; --arrow: #4a5560; --rag: #17806a; --rag-bg: #e0f3ec;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14181d; --surface: #1c2229; --fg: #e7eaee; --muted: #9aa4af; --line: #3a444f;
+      --group: #1a2027; --llm: #6aa6ee; --llm-bg: #1d3150; --arrow: #aeb8c3; --rag: #52c4a0; --rag-bg: #17352c; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14181d; --surface: #1c2229; --fg: #e7eaee; --muted: #9aa4af; --line: #3a444f;
+    --group: #1a2027; --llm: #6aa6ee; --llm-bg: #1d3150; --arrow: #aeb8c3; --rag: #52c4a0; --rag-bg: #17352c; color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.55;
+         padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+         padding-block: 40px 64px; }
+  main { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+  h1 { font-size: clamp(26px, 4vw, 34px); line-height: 1.15; margin: 0 0 12px; font-weight: 600; text-wrap: balance; letter-spacing: -0.01em; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin: 0 0 14px; }
+  p { margin: 0; }
+  .lead { max-width: 66ch; color: var(--muted); font-size: 16px; }
+  code, .tag { font-family: var(--mono); font-size: 0.9em; }
+
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 20px 28px; margin: 28px 0 0; padding: 18px 0 0; border-top: 1px solid var(--line); }
+  .facts div { min-width: 0; }
+  .facts dt { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .facts dd { margin: 2px 0 0; font-size: 15px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .legend i { width: 22px; height: 14px; border-radius: 3px; border: 1.2px solid var(--line); background: var(--surface); display: inline-block; }
+  .legend i.llm { background: var(--llm-bg); border-color: var(--llm); }
+  .legend i.plan { border-style: dashed; background: none; }
+  .legend i.rag { background: var(--rag-bg); border-color: var(--rag); }
+
+  figure { margin: 0; }
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 12px 8px; }
+  svg { display: block; width: 100%; min-width: 880px; height: auto; color: var(--fg); }
+  figcaption { margin-top: 12px; max-width: 80ch; color: var(--muted); font-size: 14px; }
+
+  /* SVG parts. Fills and strokes come from the same tokens as the page, so both themes work. */
+  .grp { fill: var(--group); stroke: var(--line); stroke-width: 1; }
+  .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.3; }
+  .box.llm { fill: var(--llm-bg); stroke: var(--llm); stroke-width: 1.6; }
+  .box.rag { fill: var(--rag-bg); stroke: var(--rag); stroke-width: 1.6; }
+  .box.plan { fill: none; stroke-dasharray: 5 4; }
+  .rt { font: 600 10.5px var(--sans); letter-spacing: 0.08em; fill: var(--rag); }
+
+  section > .lead { margin-bottom: 18px; }
+  .tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; background: var(--group); }
+  td.tag { white-space: nowrap; color: var(--fg); }
+  .notes { margin: 18px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; max-width: 80ch; }
+  .sub { margin: 28px 0 10px; font-size: 16px; font-weight: 600; }
+  .t { font: 600 13.5px var(--sans); fill: var(--fg); }
+  .s { font: 400 11.5px var(--sans); fill: var(--muted); }
+  .m { font: 400 10.5px var(--mono); fill: var(--muted); }
+  .band { font: 600 10.5px var(--sans); letter-spacing: 0.08em; text-transform: uppercase; fill: var(--muted); }
+  .lbl { font: 400 11.5px var(--sans); fill: var(--fg); }
+  .ar { stroke: var(--arrow); stroke-width: 1.5; fill: none; }
+  .ar.dash { stroke-dasharray: 4 4; }
+  .mk { fill: var(--arrow); }
+
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px 32px; }
+  .rules h3 { font-size: 16px; margin: 0 0 6px; font-weight: 600; }
+  .rules p { color: var(--muted); font-size: 14.5px; }
+
+  .status { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px 32px; }
+  .status ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; }
+  .status h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
+  .status .next li { color: var(--muted); }
+</style>
+
+<main>
+  <header>
+    <h1>Forecast Detective</h1>
+    <p class="lead">Pick any hour from July to December 2014 and the system explains the day-ahead electricity-load forecast of LightGBM, an LSTM, or both. Ask which model to use for a period or a kind of hour and a planner compares them. Every answer is a short text in which every number is checked against computed evidence.</p>
+    <dl class="facts">
+      <div><dt>Data</dt><dd>UCI ElectricityLoadDiagrams, Portugal, hourly total of 319 clients</dd></div>
+      <div><dt>Forecast accuracy (RMSE)</dt><dd>LightGBM 10,296 kWh · LSTM 10,389 kWh on the test period (MAPE 3.03% · 3.28%)</dd></div>
+      <div><dt>Explainers</dt><dd>SHAP, LIME, Integrated Gradients, TimeSHAP</dd></div>
+      <div><dt>LLM roles</dt><dd>One chat agent that chooses actions, one writer that drafts the text for both explanations and the planner</dd></div>
+    </dl>
+  </header>
+
+  <section>
+    <h2>How a request is answered</h2>
+    <div class="legend" aria-hidden="true">
+      <span><i class="llm"></i>LLM call</span>
+      <span><i class="rag"></i>RAG knowledge base</span>
+      <span><i></i>Ordinary code or data</span>
+      <span><i class="plan"></i>Not built yet</span>
+    </div>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 1000 636" role="img"
+             aria-label="Architecture. A Streamlit app sends a question to a chat agent, or the Explain button goes straight to the explain_hour pipeline. The pipeline runs explainers, builds an evidence pack, retrieves sources from a Chroma index, has a writer LLM draft the text, and a checker verifies it before the result card is shown. Models and the index are built offline.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk" d="M0 0L10 5L0 10z"/></marker>
+          </defs>
+
+          <!-- Row 1: the request -->
+          <text class="band" x="28" y="26">Request</text>
+          <rect class="box" x="28" y="40" width="250" height="82" rx="8"/>
+          <text class="t" x="44" y="64">Streamlit app</text>
+          <text class="s" x="44" y="83">Forecast chart first</text>
+          <text class="s" x="44" y="99">Click an hour, or type a question</text>
+          <text class="s" x="44" y="114">Compare models for the window</text>
+
+          <rect class="box llm" x="360" y="40" width="290" height="82" rx="8"/>
+          <text class="t" x="376" y="64">Chat agent</text>
+          <text class="s" x="376" y="83">LLM with tool calling, up to 8 steps</text>
+          <text class="m" x="376" y="100">get_forecasts · explain_hour</text>
+          <text class="m" x="376" y="115">recommend_model · ask_user</text>
+
+          <rect class="box" x="730" y="40" width="242" height="82" rx="8"/>
+          <text class="t" x="746" y="64">Planner</text>
+          <text class="s" x="746" y="83">Which model, and where?</text>
+          <text class="s" x="746" y="99">Decision computed by code,</text>
+          <text class="s" x="746" y="114">reasoning written and checked</text>
+
+          <path class="ar" d="M278 81 H358" marker-end="url(#ah)"/>
+          <text class="lbl" x="319" y="73" text-anchor="middle">question</text>
+          <path class="ar" d="M650 81 H728" marker-end="url(#ah)"/>
+          <text class="lbl" x="689" y="73" text-anchor="middle">tool</text>
+
+          <path class="ar" d="M153 122 V168" marker-end="url(#ah)"/>
+          <text class="lbl" x="161" y="138">Explain button</text>
+          <text class="s" x="161" y="153">skips the agent</text>
+          <path class="ar" d="M505 122 V168" marker-end="url(#ah)"/>
+          <text class="lbl" x="513" y="145">explain_hour(hour, models)</text>
+
+          <!-- Row 2: the pipeline -->
+          <rect class="grp" x="12" y="170" width="976" height="174" rx="10"/>
+          <text class="band" x="28" y="190">explain_hour pipeline</text>
+
+          <rect class="box" x="28" y="206" width="168" height="110" rx="8"/>
+          <text class="t" x="44" y="230">Explainers</text>
+          <text class="s" x="44" y="250">SHAP, LIME on LightGBM</text>
+          <text class="s" x="44" y="266">IG, TimeSHAP on LSTM</text>
+          <text class="s" x="44" y="282">Cached per hour,</text>
+          <text class="s" x="44" y="298">computed on a miss</text>
+
+          <rect class="box" x="222" y="206" width="168" height="110" rx="8"/>
+          <text class="t" x="238" y="230">Evidence pack</text>
+          <text class="s" x="238" y="250">Numbers as tagged blocks</text>
+          <text class="m" x="238" y="268">[E:shap] [E:lime]</text>
+          <text class="m" x="238" y="283">[E:ig] [E:timeshap]</text>
+          <text class="m" x="238" y="298">[E:flags] [E:accuracy]</text>
+
+          <rect class="box rag" x="416" y="206" width="168" height="110" rx="8"/>
+          <text class="rt" x="568" y="230" text-anchor="end">RAG</text>
+          <text class="t" x="432" y="230">Retrieve sources</text>
+          <text class="s" x="432" y="250">Queries built from evidence</text>
+          <text class="s" x="432" y="266">Top 3 per query, max 10</text>
+          <text class="s" x="432" y="282">Distance ≤ 0.58</text>
+          <text class="m" x="432" y="298">→ [S1] [S2] …</text>
+
+          <rect class="box llm" x="610" y="206" width="168" height="110" rx="8"/>
+          <text class="t" x="626" y="230">Writer</text>
+          <text class="s" x="626" y="250">One LLM call, ≤ 90 words</text>
+          <text class="s" x="626" y="266">Gets evidence and sources</text>
+          <text class="s" x="626" y="282">Must cite [E:…] or [S#]</text>
+          <text class="s" x="626" y="298">for every claim</text>
+
+          <rect class="box" x="804" y="206" width="168" height="110" rx="8"/>
+          <text class="t" x="820" y="230">Checker</text>
+          <text class="s" x="820" y="250">Citations exist</text>
+          <text class="s" x="820" y="266">Numbers match evidence</text>
+          <text class="s" x="820" y="282">Causes have a source</text>
+          <text class="s" x="820" y="298">Fail: one retry</text>
+
+          <path class="ar" d="M196 261 H220" marker-end="url(#ah)"/>
+          <path class="ar" d="M390 261 H414" marker-end="url(#ah)"/>
+          <path class="ar" d="M584 261 H608" marker-end="url(#ah)"/>
+          <path class="ar" d="M778 261 H802" marker-end="url(#ah)"/>
+          <path class="ar" d="M306 206 V197 H694 V204" marker-end="url(#ah)"/>
+          <text class="lbl" x="500" y="190" text-anchor="middle">the evidence also goes straight to the writer</text>
+
+          <!-- Row 3: what the user sees -->
+          <rect class="box" x="620" y="374" width="352" height="84" rx="8"/>
+          <text class="t" x="636" y="398">Result card in the app</text>
+          <text class="s" x="636" y="418">Checks badge · drivers chart</text>
+          <text class="s" x="636" y="434">About 70 words, every claim cited</text>
+          <text class="s" x="636" y="450">Details: evidence, sources, flags</text>
+          <path class="ar" d="M888 316 V372" marker-end="url(#ah)"/>
+          <text class="lbl" x="896" y="361">shown as written</text>
+
+          <!-- Row 4: built once -->
+          <rect class="grp" x="12" y="476" width="976" height="146" rx="10"/>
+          <text class="band" x="28" y="498">Built once, offline</text>
+
+          <rect class="box" x="28" y="512" width="270" height="92" rx="8"/>
+          <text class="t" x="44" y="534">Trained models</text>
+          <text class="s" x="44" y="554">LightGBM and LSTM, trained to 2013</text>
+          <text class="s" x="44" y="570">Validated Jan–Jun 2014</text>
+          <text class="s" x="44" y="586">Tested Jul–Dec 2014 (explainable)</text>
+
+          <rect class="box rag" x="360" y="512" width="280" height="92" rx="8"/>
+          <text class="rt" x="624" y="534" text-anchor="end">RAG</text>
+          <text class="t" x="376" y="534">Chroma vector index</text>
+          <text class="s" x="376" y="554">5 XAI papers + 4 domain notes</text>
+          <text class="s" x="376" y="570">Split into passages, embedded</text>
+          <text class="s" x="376" y="586">with MiniLM, computed locally</text>
+
+          <path class="ar" d="M180 512 V318" marker-end="url(#ah)"/>
+          <text class="lbl" x="188" y="420">loads models</text>
+          <path class="ar" d="M500 512 V318" marker-end="url(#ah)"/>
+          <text class="lbl" x="508" y="420">searches</text>
+        </svg>
+      </div>
+      <figcaption>A question goes to the chat agent. It calls <code>explain_hour</code> for an hour, or <code>recommend_model</code> (the planner, described below) for a choice between models. The Explain button reaches the same pipeline directly. Everything that produces or verifies a number is ordinary code. The LLM appears twice, to decide what to run and to draft the text.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Evidence pack</h2>
+    <p class="lead">The writer never sees raw explainer output. It gets up to seven short blocks built by code. Each tag is a citation the writer must use, so any claim points back to exactly one block.</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Tag</th><th>What the block holds</th><th>Comes from</th></tr></thead>
+        <tbody>
+          <tr><td class="tag">[E:forecast]</td><td>The target hour, the actual load, each model's forecast with its error in kWh and %, and the gap between the two models</td><td>Models and actual load</td></tr>
+          <tr><td class="tag">[E:shap]</td><td>LightGBM: the six largest contributions in kWh, each with the input value. They add up to the forecast</td><td>SHAP</td></tr>
+          <tr><td class="tag">[E:lime]</td><td>LightGBM: the six largest local weights. These are weights, not contributions, and the writer is told to say so</td><td>LIME</td></tr>
+          <tr><td class="tag">[E:ig]</td><td>LSTM: the contribution of each input feature, listing only those that move the forecast</td><td>Integrated Gradients</td></tr>
+          <tr><td class="tag">[E:timeshap]</td><td>LSTM: contributions by feature and by past hour</td><td>TimeSHAP</td></tr>
+          <tr><td class="tag">[E:flags]</td><td>The disagreement checks that fired, in full, and the names of those that passed</td><td>Seven disagreement checks</td></tr>
+          <tr><td class="tag">[E:accuracy]</td><td>Test-period RMSE for this kind of hour: overall, by day type, by part of day</td><td>Accuracy slices</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="notes">
+      <li><strong>Trimmed.</strong> The raw explanation is about 370 KB. The pack keeps the six largest rows of each explainer and drops inputs that contribute about 0 kWh.</li>
+      <li><strong>Pre-computed.</strong> Errors, gaps and percentages are calculated by code and written the way they must be quoted. The writer never does arithmetic, so a number that is not in the pack is a red flag.</li>
+      <li><strong>Per model.</strong> Asking about one model builds only that model's blocks and flags, so the other model cannot leak into the text.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Retrieval (RAG)</h2>
+    <p class="lead">The explainers say what drove a forecast. Retrieval adds the background that interprets those numbers, such as how to read SHAP or why Christmas Eve behaves like a holiday, together with a source to cite. It supplies no numbers about the forecast.</p>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 1000 450" role="img"
+             aria-label="RAG detail. Offline, five papers and four notes are chunked, embedded and stored in a Chroma index. For each request, the hour's evidence and flags produce rule-based queries; Chroma returns the nearest chunks; they are filtered, capped at ten and labelled S1, S2 and so on. The labelled passages go to three places: the writer prompt, the checker and the Details panel of the app.">
+          <defs>
+            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk" d="M0 0L10 5L0 10z"/></marker>
+          </defs>
+
+          <text class="band" x="28" y="26">Built once</text>
+          <rect class="box rag" x="28" y="44" width="190" height="76" rx="8"/>
+          <text class="t" x="44" y="68">Knowledge files</text>
+          <text class="s" x="44" y="88">5 XAI papers (PDF)</text>
+          <text class="s" x="44" y="104">4 domain notes (markdown)</text>
+
+          <rect class="box rag" x="250" y="44" width="230" height="76" rx="8"/>
+          <text class="t" x="266" y="68">Chunk and embed</text>
+          <text class="s" x="266" y="88">About 200 words, 40 overlap</text>
+          <text class="s" x="266" y="104">MiniLM vectors, computed locally</text>
+
+          <rect class="box rag" x="512" y="44" width="210" height="76" rx="8"/>
+          <text class="t" x="528" y="68">Chroma index</text>
+          <text class="s" x="528" y="88">data/index, about 10 MB</text>
+          <text class="s" x="528" y="104">Text + citation label</text>
+
+          <rect class="box" x="754" y="44" width="218" height="76" rx="8"/>
+          <text class="t" x="770" y="68">Retrieval test</text>
+          <text class="s" x="770" y="88">18 questions: top 3 hit 94%</text>
+          <text class="s" x="770" y="104">Top 5 hit 100%</text>
+
+          <path class="ar" d="M218 82 H248" marker-end="url(#ah2)"/>
+          <path class="ar" d="M480 82 H510" marker-end="url(#ah2)"/>
+
+          <text class="band" x="28" y="166">Per request</text>
+          <rect class="box" x="28" y="184" width="190" height="110" rx="8"/>
+          <text class="t" x="44" y="208">The hour's evidence</text>
+          <text class="s" x="44" y="228">Date and day type</text>
+          <text class="s" x="44" y="244">Drivers from the explainers</text>
+          <text class="s" x="44" y="260">Disagreement flags</text>
+
+          <rect class="box rag" x="250" y="184" width="230" height="110" rx="8"/>
+          <text class="t" x="266" y="208">Rule-based queries</text>
+          <text class="s" x="266" y="228">No LLM: same hour, same queries</text>
+          <text class="s" x="266" y="244">1 The date: holiday, clock change</text>
+          <text class="s" x="266" y="260">2 Each disagreement flag that fired</text>
+          <text class="s" x="266" y="276">3 Always: how to read the tables</text>
+
+          <rect class="box rag" x="512" y="184" width="210" height="110" rx="8"/>
+          <text class="t" x="528" y="208">Search</text>
+          <text class="s" x="528" y="228">Embed each query</text>
+          <text class="s" x="528" y="244">3 nearest chunks per query</text>
+          <text class="s" x="528" y="260">Merge duplicates</text>
+          <text class="s" x="528" y="276">Drop distance above 0.58</text>
+
+          <rect class="box rag" x="754" y="184" width="218" height="110" rx="8"/>
+          <text class="t" x="770" y="208">Select and label</text>
+          <text class="s" x="770" y="228">Keep each query's best chunk</text>
+          <text class="s" x="770" y="244">Fill up to 10 by closeness</text>
+          <text class="s" x="770" y="260">Label best first:</text>
+          <text class="m" x="770" y="276">[S1] [S2] [S3] …</text>
+
+          <path class="ar" d="M218 239 H248" marker-end="url(#ah2)"/>
+          <path class="ar" d="M480 239 H510" marker-end="url(#ah2)"/>
+          <path class="ar" d="M722 239 H752" marker-end="url(#ah2)"/>
+          <path class="ar" d="M617 120 V182" marker-end="url(#ah2)"/>
+          <text class="lbl" x="625" y="156">nearest chunks</text>
+
+          <text class="lbl" x="520" y="311" text-anchor="middle">the labelled passages go to three places</text>
+          <path class="ar" d="M863 294 V320 H178 V338" marker-end="url(#ah2)"/>
+          <path class="ar" d="M500 320 V338" marker-end="url(#ah2)"/>
+          <path class="ar" d="M822 320 V338" marker-end="url(#ah2)"/>
+
+          <rect class="box llm" x="28" y="340" width="300" height="92" rx="8"/>
+          <text class="t" x="44" y="364">Writer prompt</text>
+          <text class="s" x="44" y="384">SOURCES block: the only background</text>
+          <text class="s" x="44" y="400">the writer may cite, as [S#]</text>
+          <text class="s" x="44" y="416">It cannot supply forecast numbers</text>
+
+          <rect class="box" x="350" y="340" width="300" height="92" rx="8"/>
+          <text class="t" x="366" y="364">Checker</text>
+          <text class="s" x="366" y="384">Each [S#] must be a real source</text>
+          <text class="s" x="366" y="400">A real-world cause with no [S#]</text>
+          <text class="s" x="366" y="416">gets a caution in the app</text>
+
+          <rect class="box" x="672" y="340" width="300" height="92" rx="8"/>
+          <text class="t" x="688" y="364">Details in the app</text>
+          <text class="s" x="688" y="384">Each passage with its citation</text>
+          <text class="s" x="688" y="400">and distance, so a person can</text>
+          <text class="s" x="688" y="416">check the claim</text>
+        </svg>
+      </div>
+      <figcaption>Top row: the index is built once from the knowledge files. Bottom rows: for each hour, code turns the evidence into queries, searches the index and keeps the closest passages. No LLM takes part in retrieval.</figcaption>
+    </figure>
+
+    <h3 class="sub">Where RAG is used</h3>
+    <ul class="notes">
+      <li><strong>Writer prompt.</strong> The retrieved passages are added to the prompt as a SOURCES block. Rule 5 lets the writer give a real-world reason only if a source states it, phrased as “according to [S#]”.</li>
+      <li><strong>Checker.</strong> A cited [S#] must exist. A sentence that states a cause without a source gets the “Cause without source” caution.</li>
+      <li><strong>The app.</strong> Details → Sources lists every passage with its citation and distance. The sidebar can switch the knowledge base off, which runs the writer without sources so the two can be compared.</li>
+    </ul>
+
+    <h3 class="sub">What gets searched</h3>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>When</th><th>Query sent to the index</th></tr></thead>
+        <tbody>
+          <tr><td>The hour is on 25 December</td><td>Christmas Day 25 December major holiday, whole-day load falls by about 40 percent</td></tr>
+          <tr><td>The SHAP-versus-LIME check fired</td><td>Why SHAP and LIME give different feature attributions: different reference points and quantities</td></tr>
+          <tr><td>Always, when LightGBM is explained</td><td>SHAP values add up to the forecast minus the expected value, the average model output</td></tr>
+          <tr><td>Always, when the LSTM is explained</td><td>Baseline for the LSTM explanations: a typical non-holiday weekday at the same hour and season</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="notes">
+      <li><strong>Why rules, not an LLM.</strong> Rule-based queries are repeatable, free and testable, and each carries the reason it was sent.</li>
+      <li><strong>The 0.58 cut-off</strong> sits in a measured gap: the best match for on-topic test queries was at most 0.55 away, and for off-topic ones at least 0.62. Weak matches are dropped instead of cited.</li>
+      <li><strong>Known weakness.</strong> Retrieval can confuse near-identical calendar sections. Adding keyword search next to the embeddings would help.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Planner</h2>
+    <p class="lead">Explanations answer “why was this hour off?”. The planner answers “which model should I use, and where?”. Code makes the decision with a statistical test. The writer only gives the reasons, and cannot change the decision.</p>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 1000 466" role="img"
+             aria-label="Planner detail. A scope from the agent or the Compare models button is validated, the two models are compared by resampling whole days, each group gets a verdict, and code writes the decision headline. Evidence blocks, the worst hour of each model with its top drivers, and RAG sources go to the writer, whose text is checked and shown beside the headline.">
+          <defs>
+            <marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk" d="M0 0L10 5L0 10z"/></marker>
+          </defs>
+
+          <text class="band" x="28" y="26">Decided by code, no LLM</text>
+          <rect class="box" x="28" y="44" width="200" height="86" rx="8"/>
+          <text class="t" x="44" y="68">Scope</text>
+          <text class="s" x="44" y="88">Period and kind of hour</text>
+          <text class="s" x="44" y="104">From the agent or the</text>
+          <text class="s" x="44" y="119">Compare models button</text>
+
+          <rect class="box" x="268" y="44" width="220" height="86" rx="8"/>
+          <text class="t" x="284" y="68">Compare the models</text>
+          <text class="s" x="284" y="88">Gap in miss, hour by hour</text>
+          <text class="s" x="284" y="104">Resample whole days 2,000 times</text>
+          <text class="s" x="284" y="119">95% interval for the gap</text>
+
+          <rect class="box" x="528" y="44" width="220" height="86" rx="8"/>
+          <text class="t" x="544" y="68">Verdict per group</text>
+          <text class="s" x="544" y="88">Clear: interval above 0,</text>
+          <text class="s" x="544" y="104">gap at least 0.1 points</text>
+          <text class="s" x="544" y="119">Under 5 days: too few to tell</text>
+
+          <rect class="box" x="788" y="44" width="184" height="86" rx="8"/>
+          <text class="t" x="804" y="68">Decision</text>
+          <text class="s" x="804" y="88">Headline written by code</text>
+          <text class="s" x="804" y="104">Default model + where</text>
+          <text class="s" x="804" y="119">to switch</text>
+
+          <path class="ar" d="M228 87 H266" marker-end="url(#ah3)"/>
+          <path class="ar" d="M488 87 H526" marker-end="url(#ah3)"/>
+          <path class="ar" d="M748 87 H786" marker-end="url(#ah3)"/>
+
+          <text class="band" x="28" y="172">Evidence and reasoning</text>
+          <rect class="box" x="28" y="190" width="200" height="104" rx="8"/>
+          <text class="t" x="44" y="214">Worst hour of each model</text>
+          <text class="s" x="44" y="234">Top 2 inputs it relied on,</text>
+          <text class="s" x="44" y="250">from the cached SHAP and</text>
+          <text class="s" x="44" y="266">Integrated Gradients</text>
+
+          <rect class="box" x="268" y="190" width="220" height="104" rx="8"/>
+          <text class="t" x="284" y="214">Evidence blocks</text>
+          <text class="m" x="284" y="236">[E:scope] [E:overall]</text>
+          <text class="m" x="284" y="251">[E:slices] [E:policy]</text>
+          <text class="m" x="284" y="266">[E:worst] [E:limits]</text>
+
+          <rect class="box rag" x="528" y="190" width="220" height="104" rx="8"/>
+          <text class="rt" x="732" y="214" text-anchor="end">RAG</text>
+          <text class="t" x="544" y="214">Sources</text>
+          <text class="s" x="544" y="234">Model comparison, calendar</text>
+          <text class="s" x="544" y="250">background</text>
+          <text class="s" x="544" y="266">Top 3 per query, max 6</text>
+
+          <rect class="box llm" x="788" y="190" width="184" height="104" rx="8"/>
+          <text class="t" x="804" y="214">Writer</text>
+          <text class="s" x="804" y="234">Reasoning only, ≤ 80 words</text>
+          <text class="s" x="804" y="250">Gets the decision as a</text>
+          <text class="s" x="804" y="266">fixed line, cannot change it</text>
+
+          <path class="ar" d="M378 130 V188" marker-end="url(#ah3)"/>
+          <text class="lbl" x="386" y="164">numbers</text>
+          <path class="ar" d="M880 130 V188" marker-end="url(#ah3)"/>
+          <text class="lbl" x="888" y="164">decision</text>
+          <path class="ar" d="M228 242 H266" marker-end="url(#ah3)"/>
+          <path class="ar" d="M488 242 H526" marker-end="url(#ah3)"/>
+          <path class="ar" d="M748 242 H786" marker-end="url(#ah3)"/>
+          <path class="ar" d="M378 294 V308 H830 V296" marker-end="url(#ah3)"/>
+          <text class="lbl" x="604" y="324" text-anchor="middle">the evidence also goes straight to the writer</text>
+
+          <rect class="box" x="28" y="350" width="460" height="92" rx="8"/>
+          <text class="t" x="44" y="374">Why whole days, not hours</text>
+          <text class="s" x="44" y="394">The 24 hours of one day share their causes, so their</text>
+          <text class="s" x="44" y="410">errors move together. Resampling hours as if each were</text>
+          <text class="s" x="44" y="426">independent makes every small gap look real.</text>
+
+          <rect class="box" x="528" y="350" width="220" height="92" rx="8"/>
+          <text class="t" x="544" y="374">Result card in the app</text>
+          <text class="s" x="544" y="394">Headline box, coloured by</text>
+          <text class="s" x="544" y="410">confidence; RMSE chart;</text>
+          <text class="s" x="544" y="426">cited text; Details</text>
+
+          <rect class="box" x="788" y="350" width="184" height="92" rx="8"/>
+          <text class="t" x="804" y="374">Checker</text>
+          <text class="s" x="804" y="394">Citations and numbers</text>
+          <text class="s" x="804" y="410">Length, judging words</text>
+          <text class="s" x="804" y="426">Fail: one retry</text>
+
+          <path class="ar" d="M920 294 V348" marker-end="url(#ah3)"/>
+          <path class="ar" d="M788 396 H750" marker-end="url(#ah3)"/>
+        </svg>
+      </div>
+      <figcaption>The top row is statistics and runs without an API key. The writer then explains a decision it cannot change, and its text goes through the same checker as the explanations, plus a length limit and a guard against judging a sample as “substantial”.</figcaption>
+    </figure>
+
+    <h3 class="sub">Verdicts</h3>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Verdict</th><th>Rule</th><th>What the app does</th></tr></thead>
+        <tbody>
+          <tr><td>Clear</td><td>The whole 95% interval is above 0, and the RMSE gap is at least 3%</td><td>Green box: “Use LightGBM for …”</td></tr>
+          <tr><td>No clear difference</td><td>The gap could be luck, or is too small to matter</td><td>Blue box: “No clear winner for …”</td></tr>
+          <tr><td>Too few days</td><td>Fewer than 5 distinct days. No interval is computed</td><td>Amber box: “Too few days to separate the models”</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub">What it finds on the test period</h3>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Kind of hour</th><th>RMSE (kWh)</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>All hours (184 days)</td><td>LightGBM 10,296 · LSTM 10,389</td><td>No clear difference: LightGBM lower by 0.9%, interval −6.1% to +6.9%</td></tr>
+          <tr><td>Night 00–05</td><td>3,169 / 4,307</td><td>LightGBM clearly better (RMSE 26% lower)</td></tr>
+          <tr><td>Weekday, weekend, morning, afternoon, evening</td><td>RMSE gap 0% to 4.3%</td><td>No clear difference</td></tr>
+          <tr><td>Holiday (2 days), major holiday (25 December)</td><td>Major holiday: LightGBM 32,004 · LSTM 17,490</td><td>Too few days: the LSTM looks better on 25 December, on 1 day. Not reliable</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="notes">
+      <li><strong>The explanations enter through the worst hours.</strong> A model that missed on 25 December because it leaned on last week's load is a different risk from one that missed for no visible reason.</li>
+      <li><strong>The decision does not depend on the LLM.</strong> Switching the writer's model, or the knowledge base, changes the wording of the reasoning and never the headline.</li>
+      <li><strong>Known gap.</strong> A writer can still overclaim in a way code cannot see, such as “consistently better across hour types” when seven of eight kinds of hour show no clear difference. The manual review set is for that.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Checker</h2>
+    <p class="lead">Plain code reads the writer's text and tests it against the evidence and the sources. No LLM is involved, so the result is exact and free.</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Check</th><th>Rule</th><th>If it fails</th></tr></thead>
+        <tbody>
+          <tr><td>Citations exist</td><td>Every [E:…] and [S#] must be one that was provided. A made-up tag such as [E:made_up] is caught</td><td>Text fails</td></tr>
+          <tr><td>Numbers match</td><td>A number must appear in a block cited in the same sentence, else in the same paragraph, else anywhere in the evidence. It is compared at the precision written, so 14.6% may be written 15%</td><td>Text fails</td></tr>
+          <tr><td>Flags are cited</td><td>If any disagreement check fired, the text must cite [E:flags]</td><td>Text fails</td></tr>
+          <tr><td>Cause has a source</td><td>A sentence with “because”, “due to” or “the main reason” needs an [S#]. Attributions describe the model, not the real world</td><td>Caution only</td></tr>
+          <tr><td>Number without citation</td><td>A sentence with a number and no citation is reported</td><td>Report only</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="notes">
+      <li><strong>One retry.</strong> A failed text goes back to the writer with a list of exactly what failed, including the block where a misquoted number really lives. A second failure is shown with a red badge, never hidden.</li>
+      <li><strong>Planner texts</strong> face two more rules: over 110 words, or words that judge a sample (“substantial”, “solid”), send the text back once.</li>
+      <li><strong>Ignored as claims.</strong> Feature names (such as the 168 in load_lag_168h), clock times, dates and years are not treated as numbers to verify.</li>
+      <li><strong>What it cannot see.</strong> Swapped model names, muddled reasoning that cites a real source, and a missing top driver. These need a person, which is why the manual review set is planned.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Design rules</h2>
+    <div class="rules">
+      <div>
+        <h3>The agent chooses, code computes</h3>
+        <p>The chat agent resolves the date, hour and model. It never writes an explanation or states a number. <code>explain_hour</code> returns the checked text untouched. The planner works the same way: which model wins is computed, and the writer only explains.</p>
+      </div>
+      <div>
+        <h3>Every number can be traced</h3>
+        <p>A number must appear in an evidence block cited in the same sentence. Unknown citations fail, and a cause with no source gets a caution. A failed check shows as a red badge, never hidden.</p>
+      </div>
+      <div>
+        <h3>Bounded and honest about range</h3>
+        <p>At most 8 agent steps and 3 hours per request. Dates before July 2014 are refused, because the models trained on them and an explanation would describe a memorised fit.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Status</h2>
+    <div class="status">
+      <div>
+        <h3>Built and tested</h3>
+        <ul>
+          <li>Both forecasters and four explainers</li>
+          <li>Accuracy slices and seven disagreement checks</li>
+          <li>Knowledge base with retrieval (top-3 recall 94% on 18 test questions)</li>
+          <li>Cited writer with automatic checks, and the chat agent</li>
+          <li>Planner: statistical verdicts per kind of hour, a switching policy and a checked written reasoning</li>
+          <li>Chart-first interactive app with a Compare models button, 151 automated tests</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
