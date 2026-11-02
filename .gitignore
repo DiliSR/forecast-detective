@@ -1,0 +1,57 @@
+# secrets (never commit these)
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+*.pem
+*.key
+
+# generated or downloaded data (rebuild with the scripts)
+data/raw/
+data/processed/
+data/index/
+
+# generated caches: rebuilt on demand; narratives and recommendations cost API calls and may hold LLM text
+outputs/explanations/
+outputs/narratives/
+outputs/recommendations/
+
+# copyrighted papers: list them in knowledge/papers/README.md instead of publishing the PDFs
+knowledge/papers/*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+.venv/
+venv/
+env/
+
+# learning notebooks (kept locally, not published)
+notebooks/
+
+# tests and tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# editor and assistant settings
+.vscode/
+.idea/
+.claude/
+.agents/
+
+# operating system
+.DS_Store
+Thumbs.db
+
+# logs and scratch
+*.log
+tmp/
+scratch/

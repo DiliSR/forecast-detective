@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forecast-explainer"
+version = "0.1.0"
+description = "Forecast Detective: electricity load forecasting with grounded, LLM-written explanations"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,23 @@
+# Theme for the forecast explainer. One locked light look (no appearance toggle) so the chart colours below are
+# always read against the background they were chosen for. Run `streamlit run app/streamlit_app.py` from the
+# project root so this file is found.
+
+[theme]
+base = "light"
+primaryColor = "#1f6bc4"             # dark enough for white button text (contrast about 5.3:1)
+backgroundColor = "#fcfcfb"
+secondaryBackgroundColor = "#f3f2ee"
+textColor = "#1f1f1e"
+borderColor = "#e6e5e0"
+font = "sans-serif"
+baseRadius = "0.5rem"
+showWidgetBorder = true
+paddingTop = "1.5rem"
+# Series colours used by the charts: LightGBM blue, LSTM orange, then two spares.
+chartCategoricalColors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]
+
+[client]
+toolbarMode = "minimal"          # no Deploy button / developer menu for people using the app
+
+[browser]
+gatherUsageStats = false

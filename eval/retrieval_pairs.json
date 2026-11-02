@@ -1,0 +1,20 @@
+[
+  {"query": "Why does the load fall in the evening of 24 December?", "expect": ["calendar_effects"], "section": "Christmas Eve"},
+  {"query": "How big is the drop in electricity use on Christmas Day?", "expect": ["calendar_effects"], "section": "Christmas Day"},
+  {"query": "What happens to consumption on New Year's Eve?", "expect": ["calendar_effects"], "section": "New Year's Eve"},
+  {"query": "Do ordinary public holidays like 1 May change demand?", "expect": ["calendar_effects"], "section": "Ordinary"},
+  {"query": "Why are the 15-minute readings divided by 4 to get kWh?", "expect": ["data_and_dst"]},
+  {"query": "How were the clock change hours repaired in the data?", "expect": ["data_and_dst"]},
+  {"query": "Which period was used for training, validation and testing?", "expect": ["data_and_dst"]},
+  {"query": "Which input features does the LightGBM model use?", "expect": ["model_cards"]},
+  {"query": "How long is the LSTM input window and what does each step contain?", "expect": ["model_cards"]},
+  {"query": "Which model is more accurate on major holidays?", "expect": ["model_cards", "calendar_effects"]},
+  {"query": "What reference value does SHAP measure the attributions against?", "expect": ["explainer_guide", "shap_lundberg2017", "treeshap_lundberg2019"]},
+  {"query": "What does a low R-squared of the LIME surrogate model mean?", "expect": ["explainer_guide", "lime_ribeiro2016"]},
+  {"query": "Why can SHAP and LIME give different answers for the same forecast?", "expect": ["explainer_guide"]},
+  {"query": "axioms an attribution method must satisfy: sensitivity and implementation invariance", "expect": ["integrated_gradients_sundararajan2017"]},
+  {"query": "pruning old events in a long sequence before computing Shapley values", "expect": ["timeshap_bento2021"]},
+  {"query": "locally faithful interpretable surrogate model fitted around one prediction", "expect": ["lime_ribeiro2016"]},
+  {"query": "unique additive feature attribution with local accuracy, missingness and consistency", "expect": ["shap_lundberg2017"]},
+  {"query": "computing exact Shapley values for tree ensembles in polynomial time", "expect": ["treeshap_lundberg2019"]}
+]

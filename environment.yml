@@ -1,0 +1,39 @@
+name: forecast-explainer
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  # torch, lightgbm and sklearn come from conda-forge so they share one OpenMP
+  # runtime; mixing the pip wheels segfaults LightGBM on macOS when torch is loaded
+  - llvm-openmp
+  - numpy=1.26.*      # shap 0.42 needs numpy<2
+  - pytorch=2.7.*
+  - lightgbm>=4.6
+  - scikit-learn
+  - pip:
+      # data
+      - pandas
+      - pyarrow<23        # pyarrow 23+ requires numpy 2
+      - ucimlrepo
+      - holidays          # Portuguese holidays (dataset is from Portugal)
+      - meteostat         # historical weather covariates
+      # explainability
+      - shap==0.42.1      # timeshap 1.0.4 imports shap's Kernel, removed in 0.44
+      - lime
+      - captum
+      - timeshap
+      # RAG
+      - sentence-transformers
+      - chromadb
+      - pypdf
+      # LLM
+      - openai
+      - python-dotenv
+      # app / viz / notebooks
+      - streamlit
+      - matplotlib
+      - plotly
+      - jupyterlab
+      - ipykernel
+      - pytest

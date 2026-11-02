@@ -1,0 +1,71 @@
+{
+  "client": "MT_320",
+  "n_clients": 1,
+  "clients": [
+    "MT_320"
+  ],
+  "target": "hourly load (kWh)",
+  "horizon": "day-ahead (all load features lagged >= 24h)",
+  "features": [
+    "load_lag_24h",
+    "load_lag_25h",
+    "load_lag_48h",
+    "load_lag_72h",
+    "load_lag_168h",
+    "load_lag_336h",
+    "load_mean_24h",
+    "load_std_24h",
+    "load_mean_7d",
+    "load_same_hour_mean_4w",
+    "lag_24h_was_holiday",
+    "lag_24h_was_major_holiday",
+    "lag_168h_was_holiday",
+    "lag_168h_was_major_holiday",
+    "hour",
+    "day_of_week",
+    "month",
+    "is_weekend",
+    "is_holiday",
+    "is_major_holiday",
+    "is_bridge_day"
+  ],
+  "split": {
+    "train_end": "2013-12-31 23:00",
+    "valid_end": "2014-06-30 23:00"
+  },
+  "params": {
+    "objective": "regression",
+    "learning_rate": 0.03,
+    "num_leaves": 63,
+    "min_child_samples": 20,
+    "feature_fraction": 0.8,
+    "bagging_fraction": 0.8,
+    "bagging_freq": 1,
+    "lambda_l2": 1.0,
+    "seed": 42,
+    "verbose": -1
+  },
+  "best_iteration": 194,
+  "test_metrics": {
+    "lightgbm": {
+      "mae": 5.581600010630089,
+      "rmse": 7.749903772837756,
+      "mape_pct": 5.612829507784137
+    },
+    "naive_yesterday": {
+      "mae": 6.657071288857385,
+      "rmse": 10.195867085752369,
+      "mape_pct": 6.728940269749417
+    },
+    "naive_last_week": {
+      "mae": 7.242081344013053,
+      "rmse": 10.32886714761112,
+      "mape_pct": 7.322519470793575
+    },
+    "same_hour_mean_4w": {
+      "mae": 7.042516372131137,
+      "rmse": 10.152054212910546,
+      "mape_pct": 7.137467933902469
+    }
+  }
+}

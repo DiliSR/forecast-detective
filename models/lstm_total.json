@@ -1,0 +1,44 @@
+{
+  "client": "total",
+  "target": "hourly load (kWh)",
+  "horizon": "day-ahead (input window ends 24h before the target hour)",
+  "split": {
+    "train_end": "2013-12-31 23:00",
+    "valid_end": "2014-06-30 23:00"
+  },
+  "test_metrics": {
+    "lstm": {
+      "mae": 7077.515625,
+      "rmse": 10389.162109375,
+      "mape_pct": 3.281436860561371
+    },
+    "lightgbm": {
+      "mae": 6730.833478776561,
+      "rmse": 10295.689486142304,
+      "mape_pct": 3.0259241233597565
+    }
+  },
+  "scaler": {
+    "mean": 205886.60043134307,
+    "std": 80789.00986582757
+  },
+  "config": {
+    "hidden_size": 64,
+    "lr": 0.001,
+    "batch_size": 256,
+    "max_epochs": 40,
+    "patience": 5,
+    "seed": 42
+  },
+  "features": [
+    "load",
+    "hour_sin",
+    "hour_cos",
+    "is_holiday",
+    "is_major_holiday",
+    "target_is_weekend",
+    "target_is_holiday",
+    "target_is_major_holiday"
+  ],
+  "seq_len": 168
+}
